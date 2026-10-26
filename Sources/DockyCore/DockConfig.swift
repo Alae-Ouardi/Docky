@@ -47,6 +47,11 @@ public struct SideDockConfig: Codable, Hashable, Sendable {
         self.shelves = shelves
     }
 
+    /// Folders and shelves show their name under the icon; apps and files do not.
+    public var labeledTileCount: Int {
+        items.filter { $0.kind == .folder }.count + shelves.count
+    }
+
     // Tolerates missing keys so configs written by older versions still load.
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)

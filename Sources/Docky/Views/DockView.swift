@@ -13,7 +13,8 @@ struct DockView: View {
 
     private var stack: AnyLayout {
         edge.isHorizontal
-            ? AnyLayout(HStackLayout(spacing: DockMetrics.spacing))
+            // Top-aligned so icons line up whether or not they carry a label underneath.
+            ? AnyLayout(HStackLayout(alignment: .top, spacing: DockMetrics.spacing))
             : AnyLayout(VStackLayout(spacing: DockMetrics.spacing))
     }
 
@@ -63,6 +64,9 @@ struct DockView: View {
                 width: edge.isHorizontal ? DockMetrics.dividerThickness : iconSize * 0.7,
                 height: edge.isHorizontal ? iconSize * 0.7 : DockMetrics.dividerThickness
             )
+            // Keeps the divider centred on the icons in a top-aligned row.
+            .frame(height: edge.isHorizontal ? iconSize : nil)
+            .padding(.top, edge.isHorizontal ? DockMetrics.indicatorSize + DockMetrics.indicatorGap : 0)
     }
 
     private var placeholder: some View {
@@ -70,6 +74,7 @@ struct DockView: View {
             .font(.system(size: iconSize * 0.6, weight: .light))
             .foregroundStyle(.secondary)
             .frame(width: iconSize, height: iconSize)
+            .padding(.top, edge.isHorizontal ? DockMetrics.indicatorSize + DockMetrics.indicatorGap : 0)
             .help("Drag apps, folders or files here")
     }
 

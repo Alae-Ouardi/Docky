@@ -114,4 +114,12 @@ struct DockConfigTests {
         #expect(decoded.left.iconSize == SideDockConfig.defaultIconSize)
         #expect(decoded.right == SideDockConfig())
     }
+
+    @Test func labeledTileCountIncludesFoldersAndShelves() {
+        let file = DockItem(kind: .file, path: "/Users/test/notes.txt")
+        let shelf = Shelf(name: "Inbox", folderPath: "/Users/test/Shelf/Inbox")
+        let dock = SideDockConfig(items: [a, c, file], shelves: [shelf])
+        #expect(dock.labeledTileCount == 2)
+        #expect(SideDockConfig(items: [a, b]).labeledTileCount == 0)
+    }
 }

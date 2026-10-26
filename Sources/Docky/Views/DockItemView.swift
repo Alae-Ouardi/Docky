@@ -18,12 +18,23 @@ struct DockItemView: View {
             : AnyLayout(HStackLayout(spacing: DockMetrics.indicatorGap))
     }
 
+    /// Side docks let the label span the indicator column too; a row keeps it to the icon.
+    private var labelWidth: CGFloat {
+        edge.isHorizontal ? iconSize : iconSize + DockMetrics.indicatorSize + DockMetrics.indicatorGap
+    }
+
     var body: some View {
-        stack {
-            if edge != .right { indicator }
-            hoverIcon
-                .opacity(item.exists ? 1 : 0.35)
-            if edge == .right { indicator }
+        VStack(spacing: DockMetrics.labelGap) {
+            stack {
+                if edge != .right { indicator }
+                hoverIcon
+                    .opacity(item.exists ? 1 : 0.35)
+                if edge == .right { indicator }
+            }
+            if item.kind == .folder {
+                TileLabel(text: item.displayName, iconSize: iconSize, width: labelWidth)
+                    .opacity(item.exists ? 1 : 0.35)
+            }
         }
         .contentShape(Rectangle())
         .onHover { hovering in

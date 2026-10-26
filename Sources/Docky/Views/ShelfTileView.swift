@@ -23,6 +23,34 @@ struct ShelfTileView: View {
     }
 
     var body: some View {
+        VStack(spacing: DockMetrics.labelGap) {
+            tile
+            TileLabel(text: shelf.name, iconSize: iconSize, width: iconSize)
+        }
+        // In a row, pinned items carry their running dot above the icon; match it so
+        // shelf icons line up with them.
+        .padding(.top, edge.isHorizontal ? DockMetrics.indicatorSize + DockMetrics.indicatorGap : 0)
+        .contentShape(Rectangle())
+        .onHover { isHovered = $0 }
+        .onTapGesture { isOpen.wrappedValue.toggle() }
+        .help(shelf.name)
+        .dropDestination(for: URL.self) { urls, _ in
+            state.moveFiles(urls.filter(\.isFileURL), to: shelf)
+            return true
+        } isTargeted: { targeted in
+            withAnimation(.spring(duration: 0.2)) { isTargeted = targeted }
+        }
+        .popover(isPresented: isOpen, arrowEdge: edge.popoverArrowEdge) {
+            ShelfContentView(shelf: shelf)
+                .environment(state)
+        }
+        .contextMenu {
+            Button("Open in Finder") { ItemActions.open(shelf.folderURL) }
+            Button("Remove Shelf from Dock") { state.removeShelf(shelf, from: edge) }
+        }
+    }
+
+    private var tile: some View {
         Image(systemName: isTargeted ? "tray.and.arrow.down.fill" : "tray.full.fill")
             .font(.system(size: iconSize * 0.5))
             .foregroundStyle(isTargeted ? Color.accentColor : .secondary)
@@ -32,23 +60,5 @@ struct ShelfTileView: View {
                     .fill(Color.primary.opacity(isTargeted || isHovered ? 0.14 : 0.07))
             )
             .scaleEffect(isTargeted ? DockMetrics.hoverScale : 1)
-            .contentShape(Rectangle())
-            .onHover { isHovered = $0 }
-            .onTapGesture { isOpen.wrappedValue.toggle() }
-            .help(shelf.name)
-            .dropDestination(for: URL.self) { urls, _ in
-                state.moveFiles(urls.filter(\.isFileURL), to: shelf)
-                return true
-            } isTargeted: { targeted in
-                withAnimation(.spring(duration: 0.2)) { isTargeted = targeted }
-            }
-            .popover(isPresented: isOpen, arrowEdge: edge.popoverArrowEdge) {
-                ShelfContentView(shelf: shelf)
-                    .environment(state)
-            }
-            .contextMenu {
-                Button("Open in Finder") { ItemActions.open(shelf.folderURL) }
-                Button("Remove Shelf from Dock") { state.removeShelf(shelf, from: edge) }
-            }
     }
 }

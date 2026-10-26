@@ -1,0 +1,93 @@
+import Foundation
+import Testing
+@testable import DockyCore
+
+struct DockConfigTests {
+    let a = DockItem(kind: .app, path: "/Applications/A.app")
+    let b = DockItem(kind: .app, path: "/Applications/B.app")
+    let c = DockItem(kind: .folder, path: "/Users/test/Downloads")
+
+    var config: DockConfig {
+        DockConfig(left: SideDockConfig(isEnabled: true, items: [a, b]), right: SideDockConfig(items: [c]))
+    }
+
+    @Test func addingSkipsDuplicatesAndKeepsOriginal() {
+        let original = config
+        let updated = original.adding([DockItem(kind: .app, path: a.path), c], to: .left)
+        #expect(updated.left.items.map(\.path) == [a.path, b.path, c.path])
+        #expect(original.left.items.count == 2)
+    }
+
+    @Test func addingAtIndexClamps() {
+        let updated = config.adding([c], to: .left, at: 99)
+        #expect(updated.left.items.last == c)
+        let front = config.adding([c], to: .left, at: -5)
+        #expect(front.left.items.first == c)
+    }
+
+    @Test func removingDeletesFromAnyEdge() {
+        let updated = config.removing(itemID: c.id)
+        #expect(updated.right.items.isEmpty)
+        #expect(updated.left.items == [a, b])
+    }
+
+    @Test func movingWithinSameEdgeForward() {
+        // Drop A after B: destination index 2 in the pre-removal list.
+        let updated = config.moving(itemID: a.id, to: .left, at: 2)
+        #expect(updated.left.items == [b, a])
+    }
+
+    @Test func movingWithinSameEdgeBackward() {
+        let updated = config.moving(itemID: b.id, to: .left, at: 0)
+        #expect(updated.left.items == [b, a])
+    }
+
+    @Test func movingAcrossEdges() {
+        let updated = config.moving(itemID: a.id, to: .right, at: 0)
+        #expect(updated.left.items == [b])
+        #expect(updated.right.items == [a, c])
+    }
+
+    @Test func movingUnknownItemIsNoOp() {
+        #expect(config.moving(itemID: UUID(), to: .right, at: 0) == config)
+    }
+
+    @Test func droppingKnownPathMovesAcrossEdges() {
+        let updated = config.dropping([URL(fileURLWithPath: c.path)], on: .left, at: 0)
+        #expect(updated.left.items == [c, a, b])
+        #expect(updated.right.items.isEmpty)
+    }
+
+    @Test func droppingNewPathsInsertsInOrder() {
+        let x = URL(fileURLWithPath: "/tmp/x.txt")
+        let y = URL(fileURLWithPath: "/tmp/y.txt")
+        let updated = config.dropping([x, y], on: .left, at: 1)
+        #expect(updated.left.items.map(\.path) == [a.path, x.path, y.path, b.path])
+    }
+
+    @Test func droppingWithoutIndexAppends() {
+        let updated = config.dropping([URL(fileURLWithPath: a.path)], on: .left, at: nil)
+        #expect(updated.left.items == [b, a])
+    }
+
+    @Test func nativeLayoutAddingSortsBySectionAndDedupes() {
+        let layout = NativeDockLayout(apps: [a]).adding([a, b, c])
+        #expect(layout.apps == [a, b])
+        #expect(layout.others == [c])
+        #expect(layout.removing(itemID: b.id).apps == [a])
+    }
+
+    @Test func iconSizeIsClamped() {
+        #expect(SideDockConfig(iconSize: 500).iconSize == SideDockConfig.iconSizeRange.upperBound)
+        #expect(SideDockConfig(iconSize: 1).iconSize == SideDockConfig.iconSizeRange.lowerBound)
+    }
+
+    @Test func decodesPartialJSONWithDefaults() throws {
+        let json = #"{"left":{"isEnabled":true}}"#.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(DockConfig.self, from: json)
+        #expect(decoded.left.isEnabled)
+        #expect(decoded.left.visibility == .alwaysVisible)
+        #expect(decoded.left.iconSize == SideDockConfig.defaultIconSize)
+        #expect(decoded.right == SideDockConfig())
+    }
+}

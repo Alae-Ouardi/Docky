@@ -185,8 +185,8 @@ private struct DockChrome: View {
 
     var body: some View {
         let dock = state.config[edge]
-        let thickness = DockMetrics.thickness(iconSize: dock.iconSize)
-        let length = DockMetrics.length(for: dock)
+        let thickness = DockMetrics.thickness(for: dock, edge: edge)
+        let length = DockMetrics.length(for: dock, edge: edge)
         DockView(edge: edge)
             .frame(width: edge.isHorizontal ? length : thickness, height: edge.isHorizontal ? thickness : length)
             .background(Glass(cornerRadius: DockMetrics.cornerRadius))

@@ -12,16 +12,42 @@ enum DockMetrics {
     static let screenMargin: CGFloat = 12
     static let cornerRadius: CGFloat = 16
     static let hoverScale: CGFloat = 1.12
+    static let labelGap: CGFloat = 2
 
-    static func thickness(iconSize: CGFloat) -> CGFloat {
-        iconSize + 2 * padding + 2 * (indicatorSize + indicatorGap)
+    /// Folder and shelf names scale with the icon but stay readable at the extremes.
+    static func labelFontSize(iconSize: CGFloat) -> CGFloat {
+        min(max(iconSize * 0.2, 9), 13)
     }
 
-    static func length(for dock: SideDockConfig) -> CGFloat {
+    /// Fixed so the window frame can reserve exactly the space the label takes.
+    static func labelHeight(iconSize: CGFloat) -> CGFloat {
+        (labelFontSize(iconSize: iconSize) * 1.3).rounded(.up)
+    }
+
+    /// Room a label adds below its icon, gap included.
+    static func labelSpace(iconSize: CGFloat) -> CGFloat {
+        labelGap + labelHeight(iconSize: iconSize)
+    }
+
+    static func thickness(for dock: SideDockConfig, edge: DockEdge) -> CGFloat {
+        let icon = CGFloat(dock.iconSize)
+        var thickness = icon + 2 * padding + 2 * (indicatorSize + indicatorGap)
+        // A row of icons grows across the dock when any of them carries a label.
+        if edge.isHorizontal && dock.labeledTileCount > 0 {
+            thickness += labelSpace(iconSize: icon)
+        }
+        return thickness
+    }
+
+    static func length(for dock: SideDockConfig, edge: DockEdge) -> CGFloat {
         let icon = CGFloat(dock.iconSize)
         var length = 2 * padding + stackLength(count: max(dock.items.count, 1), icon: icon)
         if !dock.shelves.isEmpty {
             length += 2 * spacing + dividerThickness + stackLength(count: dock.shelves.count, icon: icon)
+        }
+        // A column grows along the dock by one label per labeled tile.
+        if !edge.isHorizontal {
+            length += CGFloat(dock.labeledTileCount) * labelSpace(iconSize: icon)
         }
         return length
     }

@@ -61,16 +61,16 @@ final class DockWindowController {
 
     private var shownFrame: NSRect {
         guard let visible = screen?.visibleFrame else { return .zero }
-        let thickness = DockMetrics.thickness(iconSize: side.iconSize)
+        let thickness = DockMetrics.thickness(for: side, edge: edge)
         let margin = 2 * DockMetrics.screenMargin
         switch edge {
         case .left, .right:
-            let height = min(DockMetrics.length(for: side), visible.height - margin)
+            let height = min(DockMetrics.length(for: side, edge: edge), visible.height - margin)
             let x = edge == .left ? visible.minX : visible.maxX - thickness
             return NSRect(x: x, y: visible.midY - height / 2, width: thickness, height: height)
         case .top:
             // Just below the menu bar, centred horizontally.
-            let width = min(DockMetrics.length(for: side), visible.width - margin)
+            let width = min(DockMetrics.length(for: side, edge: edge), visible.width - margin)
             return NSRect(x: visible.midX - width / 2, y: visible.maxY - thickness, width: width, height: thickness)
         }
     }

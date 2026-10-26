@@ -3,10 +3,19 @@ import Foundation
 /// A screen edge that can host a custom dock. The bottom edge belongs to the native Dock.
 public enum DockEdge: String, Codable, CaseIterable, Sendable {
     case left
+    case top
     case right
 
-    public var opposite: DockEdge { self == .left ? .right : .left }
-    public var title: String { self == .left ? "Left" : "Right" }
+    public var title: String {
+        switch self {
+        case .left: "Left"
+        case .top: "Top"
+        case .right: "Right"
+        }
+    }
+
+    /// Top docks lay their icons out in a row; side docks in a column.
+    public var isHorizontal: Bool { self == .top }
 }
 
 public enum DockVisibility: String, Codable, CaseIterable, Sendable {
@@ -53,10 +62,16 @@ public struct SideDockConfig: Codable, Hashable, Sendable {
 
 public struct DockConfig: Codable, Hashable, Sendable {
     public var left: SideDockConfig
+    public var top: SideDockConfig
     public var right: SideDockConfig
 
-    public init(left: SideDockConfig = SideDockConfig(), right: SideDockConfig = SideDockConfig()) {
+    public init(
+        left: SideDockConfig = SideDockConfig(),
+        top: SideDockConfig = SideDockConfig(),
+        right: SideDockConfig = SideDockConfig()
+    ) {
         self.left = left
+        self.top = top
         self.right = right
     }
 
@@ -64,15 +79,23 @@ public struct DockConfig: Codable, Hashable, Sendable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.init(
             left: try container.decodeIfPresent(SideDockConfig.self, forKey: .left) ?? SideDockConfig(),
+            top: try container.decodeIfPresent(SideDockConfig.self, forKey: .top) ?? SideDockConfig(),
             right: try container.decodeIfPresent(SideDockConfig.self, forKey: .right) ?? SideDockConfig()
         )
     }
 
     public subscript(edge: DockEdge) -> SideDockConfig {
-        get { edge == .left ? left : right }
+        get {
+            switch edge {
+            case .left: left
+            case .top: top
+            case .right: right
+            }
+        }
         set {
             switch edge {
             case .left: left = newValue
+            case .top: top = newValue
             case .right: right = newValue
             }
         }

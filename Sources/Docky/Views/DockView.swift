@@ -1,24 +1,33 @@
 import DockyCore
 import SwiftUI
 
-/// Vertical stack of pinned items with the shelves underneath.
+/// The pinned items of one dock followed by its shelves: a column for side docks,
+/// a row for the top dock.
 struct DockView: View {
     let edge: DockEdge
     @Environment(AppState.self) private var state
     @State private var dropTargetIndex: Int?
 
-    private var side: SideDockConfig { state.config[edge] }
-    private var iconSize: CGFloat { side.iconSize }
+    private var dock: SideDockConfig { state.config[edge] }
+    private var iconSize: CGFloat { dock.iconSize }
+
+    private var stack: AnyLayout {
+        edge.isHorizontal
+            ? AnyLayout(HStackLayout(spacing: DockMetrics.spacing))
+            : AnyLayout(VStackLayout(spacing: DockMetrics.spacing))
+    }
 
     var body: some View {
-        ScrollView(.vertical, showsIndicators: false) {
-            VStack(spacing: DockMetrics.spacing) {
-                if side.items.isEmpty {
+        ScrollView(edge.isHorizontal ? .horizontal : .vertical, showsIndicators: false) {
+            stack {
+                if dock.items.isEmpty {
                     placeholder
                 }
-                ForEach(Array(side.items.enumerated()), id: \.element.id) { index, item in
+                ForEach(Array(dock.items.enumerated()), id: \.element.id) { index, item in
                     DockItemView(item: item, edge: edge, iconSize: iconSize)
-                        .overlay(alignment: .top) { insertionMarker(visible: dropTargetIndex == index) }
+                        .overlay(alignment: edge.isHorizontal ? .leading : .top) {
+                            insertionMarker(visible: dropTargetIndex == index)
+                        }
                         .dropDestination(for: DockDragPayload.self) { payloads, _ in
                             state.drop(payloads.map(\.url), on: edge, at: index)
                             return true
@@ -30,16 +39,15 @@ struct DockView: View {
                             }
                         }
                 }
-                if !side.shelves.isEmpty {
-                    Divider()
-                        .frame(width: iconSize * 0.7, height: DockMetrics.dividerHeight)
-                    ForEach(side.shelves) { shelf in
+                if !dock.shelves.isEmpty {
+                    divider
+                    ForEach(dock.shelves) { shelf in
                         ShelfTileView(shelf: shelf, edge: edge, iconSize: iconSize)
                     }
                 }
             }
             .padding(DockMetrics.padding)
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .contentShape(Rectangle())
@@ -47,6 +55,14 @@ struct DockView: View {
             state.drop(payloads.map(\.url), on: edge, at: nil)
             return true
         }
+    }
+
+    private var divider: some View {
+        Divider()
+            .frame(
+                width: edge.isHorizontal ? DockMetrics.dividerThickness : iconSize * 0.7,
+                height: edge.isHorizontal ? iconSize * 0.7 : DockMetrics.dividerThickness
+            )
     }
 
     private var placeholder: some View {
@@ -58,10 +74,11 @@ struct DockView: View {
     }
 
     private func insertionMarker(visible: Bool) -> some View {
-        Capsule()
+        let offset = -DockMetrics.spacing / 2 - 1.5
+        return Capsule()
             .fill(Color.accentColor)
-            .frame(width: iconSize, height: 3)
-            .offset(y: -DockMetrics.spacing / 2 - 1.5)
+            .frame(width: edge.isHorizontal ? 3 : iconSize, height: edge.isHorizontal ? iconSize : 3)
+            .offset(x: edge.isHorizontal ? offset : 0, y: edge.isHorizontal ? 0 : offset)
             .opacity(visible ? 1 : 0)
     }
 }

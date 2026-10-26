@@ -42,7 +42,7 @@ struct ShelfTileView: View {
             } isTargeted: { targeted in
                 withAnimation(.spring(duration: 0.2)) { isTargeted = targeted }
             }
-            .popover(isPresented: isOpen, arrowEdge: edge == .left ? .trailing : .leading) {
+            .popover(isPresented: isOpen, arrowEdge: edge.popoverArrowEdge) {
                 ShelfContentView(shelf: shelf)
                     .environment(state)
             }

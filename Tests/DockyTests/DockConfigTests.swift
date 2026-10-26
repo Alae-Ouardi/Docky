@@ -48,6 +48,19 @@ struct DockConfigTests {
         #expect(updated.right.items == [a, c])
     }
 
+    @Test func movingToTopDock() {
+        let updated = config.moving(itemID: b.id, to: .top, at: 0)
+        #expect(updated.top.items == [b])
+        #expect(updated.left.items == [a])
+    }
+
+    @Test func decodesConfigWithoutTopDock() throws {
+        let json = #"{"left":{"isEnabled":true},"right":{}}"#.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(DockConfig.self, from: json)
+        #expect(decoded.top == SideDockConfig())
+        #expect(decoded.left.isEnabled)
+    }
+
     @Test func movingUnknownItemIsNoOp() {
         #expect(config.moving(itemID: UUID(), to: .right, at: 0) == config)
     }

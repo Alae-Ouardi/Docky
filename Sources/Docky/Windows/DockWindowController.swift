@@ -55,10 +55,33 @@ final class DockWindowController {
 
     private var shownFrame: NSRect {
         guard let visible = screen?.visibleFrame else { return .zero }
-        let width = DockMetrics.width(iconSize: side.iconSize)
-        let height = min(DockMetrics.contentHeight(for: side), visible.height - 2 * DockMetrics.screenMargin)
-        let x = edge == .left ? visible.minX : visible.maxX - width
-        return NSRect(x: x, y: visible.midY - height / 2, width: width, height: height)
+        let thickness = DockMetrics.thickness(iconSize: side.iconSize)
+        let margin = 2 * DockMetrics.screenMargin
+        switch edge {
+        case .left, .right:
+            let height = min(DockMetrics.length(for: side), visible.height - margin)
+            let x = edge == .left ? visible.minX : visible.maxX - thickness
+            return NSRect(x: x, y: visible.midY - height / 2, width: thickness, height: height)
+        case .top:
+            // Just below the menu bar, centred horizontally.
+            let width = min(DockMetrics.length(for: side), visible.width - margin)
+            return NSRect(x: visible.midX - width / 2, y: visible.maxY - thickness, width: width, height: thickness)
+        }
+    }
+
+    /// The dock plus the strip between it and its screen edge (the menu bar for the top dock),
+    /// so a pointer resting at the edge keeps the dock open instead of toggling it.
+    private func keepOpenRegion(shown: NSRect, screen: NSRect) -> NSRect {
+        let region = shown.insetBy(dx: -Self.hideSlack, dy: -Self.hideSlack)
+        switch edge {
+        case .left: return region.union(NSRect(x: screen.minX, y: shown.minY, width: 1, height: shown.height))
+        case .right: return region.union(NSRect(x: screen.maxX - 1, y: shown.minY, width: 1, height: shown.height))
+        case .top: return region.union(NSRect(x: shown.minX, y: screen.maxY - 1, width: shown.width, height: 1))
+        }
+    }
+
+    private func span(of shown: NSRect) -> ClosedRange<CGFloat> {
+        edge.isHorizontal ? shown.minX...shown.maxX : shown.minY...shown.maxY
     }
 
     // MARK: - Auto-hide
@@ -85,7 +108,7 @@ final class DockWindowController {
 
         if isRevealed {
             let keepOpen = state.openShelfID != nil
-                || shown.insetBy(dx: -Self.hideSlack, dy: -Self.hideSlack).contains(mouse)
+                || keepOpenRegion(shown: shown, screen: screenFrame).contains(mouse)
             if keepOpen {
                 lastInsideAt = Date()
             } else if Date().timeIntervalSince(lastInsideAt) > Self.hideDelay {
@@ -93,7 +116,7 @@ final class DockWindowController {
             }
         } else {
             let hasNeighbour = edgeTrigger.hasNeighbour(of: screenFrame, among: NSScreen.screens.map(\.frame))
-            if edgeTrigger.shouldReveal(pointer: mouse, screen: screenFrame, dockSpan: shown.minY...shown.maxY,
+            if edgeTrigger.shouldReveal(pointer: mouse, screen: screenFrame, dockSpan: span(of: shown),
                                         hasNeighbourScreen: hasNeighbour) {
                 setRevealed(true, animated: true)
             }

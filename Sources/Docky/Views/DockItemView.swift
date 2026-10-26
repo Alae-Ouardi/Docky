@@ -1,7 +1,7 @@
 import DockyCore
 import SwiftUI
 
-/// One pinned app, folder or file in a side dock.
+/// One pinned app, folder or file in a dock. The running dot sits on the screen-edge side.
 struct DockItemView: View {
     let item: DockItem
     let edge: DockEdge
@@ -12,9 +12,15 @@ struct DockItemView: View {
 
     private var isRunning: Bool { state.running.isRunning(item) }
 
+    private var stack: AnyLayout {
+        edge.isHorizontal
+            ? AnyLayout(VStackLayout(spacing: DockMetrics.indicatorGap))
+            : AnyLayout(HStackLayout(spacing: DockMetrics.indicatorGap))
+    }
+
     var body: some View {
-        HStack(spacing: DockMetrics.indicatorGap) {
-            if edge == .left { indicator }
+        stack {
+            if edge != .right { indicator }
             hoverIcon
                 .opacity(item.exists ? 1 : 0.35)
             if edge == .right { indicator }
@@ -73,8 +79,10 @@ struct ItemMenu: View {
     var body: some View {
         Button("Show in Finder") { ItemActions.revealInFinder(item.url) }
         Divider()
-        Button("Move to \(edge.opposite.title) Dock") {
-            state.update { $0.moving(itemID: item.id, to: edge.opposite, at: $0[edge.opposite].items.count) }
+        ForEach(DockEdge.allCases.filter { $0 != edge }, id: \.self) { target in
+            Button("Move to \(target.title) Dock") {
+                state.update { $0.moving(itemID: item.id, to: target, at: $0[target].items.count) }
+            }
         }
         Button("Remove from Dock") {
             state.update { $0.removing(itemID: item.id) }

@@ -58,7 +58,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private func makeSettingsWindow() -> NSWindow {
         let window = NSWindow(contentViewController: NSHostingController(rootView: SettingsView().environment(state)))
         window.title = "Docky"
-        window.setContentSize(NSSize(width: 1040, height: 680))
+        window.setContentSize(NSSize(width: 900, height: 660))
         window.isReleasedWhenClosed = false
         window.delegate = self
         window.center()

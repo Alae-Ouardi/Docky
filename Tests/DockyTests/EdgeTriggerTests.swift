@@ -61,6 +61,31 @@ struct EdgeTriggerTests {
         #expect(r7)
     }
 
+    @Test func topEdgeWaitsBecauseOfMenuBar() {
+        var trigger = EdgeTrigger(edge: .top)
+        let topSpan: ClosedRange<CGFloat> = 400...1100
+        let atTop = CGPoint(x: 700, y: 981.5)
+        let first = trigger.shouldReveal(pointer: atTop, screen: primary, dockSpan: topSpan,
+                                         hasNeighbourScreen: false, now: start)
+        #expect(!first)
+        let rested = trigger.shouldReveal(pointer: atTop, screen: primary, dockSpan: topSpan,
+                                          hasNeighbourScreen: false, now: start.addingTimeInterval(0.3))
+        #expect(rested)
+    }
+
+    @Test func topEdgeIgnoresPointerOutsideSpan() {
+        var trigger = EdgeTrigger(edge: .top)
+        let revealed = trigger.shouldReveal(pointer: CGPoint(x: 100, y: 982), screen: primary, dockSpan: 400...1100,
+                                            hasNeighbourScreen: false, now: start.addingTimeInterval(5))
+        #expect(!revealed)
+    }
+
+    @Test func detectsScreenAboveForTopEdge() {
+        let above = CGRect(x: 0, y: 982, width: 1512, height: 982)
+        #expect(EdgeTrigger(edge: .top).hasNeighbour(of: primary, among: [primary, above]))
+        #expect(!EdgeTrigger(edge: .top).hasNeighbour(of: primary, among: [primary, external]))
+    }
+
     @Test func detectsNeighbourOnlyOnDockEdge() {
         let screens = [primary, external]
         #expect(EdgeTrigger(edge: .right).hasNeighbour(of: primary, among: screens))

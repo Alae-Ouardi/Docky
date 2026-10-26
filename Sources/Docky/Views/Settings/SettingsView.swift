@@ -1,48 +1,92 @@
 import DockyCore
 import SwiftUI
 
-/// Three columns mirroring the screen: left dock, the native bottom Dock, right dock.
-struct SettingsView: View {
+/// Which dock the customization window is editing.
+enum DockSelection: Hashable {
+    case custom(DockEdge)
+    case bottom
+}
 
+/// Sidebar of docks (left, top, right and the macOS bottom Dock) with the selected one's settings.
+struct SettingsView: View {
     @Environment(AppState.self) private var state
     @State private var nativeDock: NativeDockEditor
+    @State private var selection: DockSelection
 
     @MainActor
-    init(nativeDock: NativeDockEditor? = nil) {
+    init(nativeDock: NativeDockEditor? = nil, selection: DockSelection = .custom(.left)) {
         _nativeDock = State(initialValue: nativeDock ?? NativeDockEditor())
+        _selection = State(initialValue: selection)
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            if let error = state.lastError {
-                errorBanner(error)
+        NavigationSplitView {
+            sidebar
+        } detail: {
+            VStack(spacing: 0) {
+                if let error = state.lastError {
+                    errorBanner(error)
+                }
+                detail
+                    .padding(20)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
-            HStack(alignment: .top, spacing: 16) {
-                SideDockColumn(edge: .left, nativeDock: nativeDock)
-                NativeDockColumn(editor: nativeDock)
-                SideDockColumn(edge: .right, nativeDock: nativeDock)
-            }
-            .padding(16)
-            Divider()
-            footer
         }
-        .frame(minWidth: 960, minHeight: 600)
+        .frame(minWidth: 820, minHeight: 600)
         .task { nativeDock.reload() }
     }
 
-    private var footer: some View {
-        HStack {
-            Toggle("Launch Docky at login", isOn: Binding(
+    private var sidebar: some View {
+        List(selection: Binding(get: { selection }, set: { if let new = $0 { selection = new } })) {
+            Section("Docky") {
+                ForEach(DockEdge.allCases, id: \.self) { edge in
+                    sidebarRow(
+                        title: "\(edge.title) Dock",
+                        symbol: edge.symbolName,
+                        isOn: state.config[edge].isEnabled
+                    )
+                    .tag(DockSelection.custom(edge))
+                }
+            }
+            Section("macOS") {
+                sidebarRow(title: "Bottom Dock", symbol: "dock.rectangle", isOn: nil)
+                    .tag(DockSelection.bottom)
+            }
+        }
+        .navigationSplitViewColumnWidth(min: 190, ideal: 210)
+        .safeAreaInset(edge: .bottom) {
+            Toggle("Launch at login", isOn: Binding(
                 get: { state.launchAtLogin },
                 set: { state.setLaunchAtLogin($0) }
             ))
-            Spacer()
-            Text("Tip: drag icons between the live docks to rearrange them.")
-                .foregroundStyle(.secondary)
-                .font(.callout)
+            .toggleStyle(.checkbox)
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+    }
+
+    private func sidebarRow(title: String, symbol: String, isOn: Bool?) -> some View {
+        HStack {
+            Label(title, systemImage: symbol)
+            Spacer()
+            if let isOn {
+                Circle()
+                    .fill(isOn ? Color.green : Color.secondary.opacity(0.35))
+                    .frame(width: 7, height: 7)
+                    .help(isOn ? "On" : "Off")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var detail: some View {
+        switch selection {
+        case .custom(let edge):
+            SideDockColumn(edge: edge, nativeDock: nativeDock)
+                .id(edge)
+        case .bottom:
+            NativeDockColumn(editor: nativeDock)
+        }
     }
 
     private func errorBanner(_ message: String) -> some View {

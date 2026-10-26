@@ -1,7 +1,7 @@
 import DockyCore
 import SwiftUI
 
-/// Settings for one side dock: on/off, visibility, icon size, items and shelves.
+/// Settings for one Docky dock: on/off, visibility, icon size, items and shelves.
 struct SideDockColumn: View {
     let edge: DockEdge
     let nativeDock: NativeDockEditor
@@ -34,7 +34,7 @@ struct SideDockColumn: View {
                 shelvesSection
             }
         } label: {
-            Label("\(edge.title) Dock", systemImage: edge == .left ? "sidebar.left" : "sidebar.right")
+            Label("\(edge.title) Dock", systemImage: edge.symbolName)
                 .font(.headline)
         }
     }

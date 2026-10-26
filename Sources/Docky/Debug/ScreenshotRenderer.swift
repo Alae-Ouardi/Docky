@@ -32,8 +32,10 @@ enum ScreenshotRenderer {
 
         let shots: [(String, CGSize, AnyView)] = [
             ("hero", CGSize(width: 1440, height: 900), AnyView(HeroScene(shelf: shelf).environment(state))),
-            ("settings", CGSize(width: 1180, height: 820),
-             AnyView(WindowFrame(title: "Docky") { SettingsView(nativeDock: nativeDock) }.environment(state))),
+            ("settings", CGSize(width: 1060, height: 800),
+             AnyView(WindowFrame(title: "Docky") {
+                 SettingsView(nativeDock: nativeDock, selection: .custom(.right))
+             }.environment(state))),
             ("shelf", CGSize(width: 520, height: 470),
              AnyView(Backdrop { ShelfCard(shelf: shelf) }.environment(state))),
         ]
@@ -86,6 +88,10 @@ private enum SampleData {
             left: SideDockConfig(
                 isEnabled: true, visibility: .alwaysVisible, iconSize: 52,
                 items: ["Mail", "Messages", "Calendar", "Notes", "Podcasts"].map(app)
+            ),
+            top: SideDockConfig(
+                isEnabled: true, visibility: .autoHide, iconSize: 40,
+                items: ["Contacts", "Weather", "Clock", "Calculator", "TextEdit"].map(app)
             ),
             right: SideDockConfig(
                 isEnabled: true, visibility: .autoHide, iconSize: 52,
@@ -147,7 +153,7 @@ private enum SampleFiles {
 
 // MARK: - Scenes
 
-/// A desktop with both side docks, an open shelf and a mock of the native bottom Dock.
+/// A desktop with the left, top and right docks, an open shelf and a mock of the native bottom Dock.
 private struct HeroScene: View {
     let shelf: Shelf
     @Environment(AppState.self) private var state
@@ -157,6 +163,8 @@ private struct HeroScene: View {
             Wallpaper()
             VStack(spacing: 0) {
                 MenuBarMock()
+                DockChrome(edge: .top)
+                    .padding(.top, 6)
                 HStack(alignment: .center, spacing: 18) {
                     DockChrome(edge: .left)
                     Spacer()
@@ -177,9 +185,11 @@ private struct DockChrome: View {
     @Environment(AppState.self) private var state
 
     var body: some View {
-        let side = state.config[edge]
+        let dock = state.config[edge]
+        let thickness = DockMetrics.thickness(iconSize: dock.iconSize)
+        let length = DockMetrics.length(for: dock)
         DockView(edge: edge)
-            .frame(width: DockMetrics.width(iconSize: side.iconSize), height: DockMetrics.contentHeight(for: side))
+            .frame(width: edge.isHorizontal ? length : thickness, height: edge.isHorizontal ? thickness : length)
             .background(Glass(cornerRadius: DockMetrics.cornerRadius))
     }
 }
@@ -297,7 +307,7 @@ private struct WindowFrame<Content: View>: View {
                 Divider()
                 content
             }
-            .frame(width: 1100, height: 740)
+            .frame(width: 940, height: 700)
             .background(Color(nsColor: .windowBackgroundColor))
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .shadow(color: .black.opacity(0.35), radius: 30, y: 14)

@@ -4,16 +4,16 @@
 
 # Docky
 
-**Extra docks for your Mac: on the left, on the right, and a tidier one at the bottom.**
+**Extra docks for your Mac: on the left, along the top, on the right, and a tidier one at the bottom.**
 
-Pin the apps you want on each side of the screen, keep the macOS Dock for everything else,
+Pin the apps you want on any edge of the screen, keep the macOS Dock for everything else,
 and drop files on a shelf instead of piling them on the desktop.
 
 ![macOS 15+](https://img.shields.io/badge/macOS-15%2B-0A84FF?logo=apple&logoColor=white)
 ![Swift](https://img.shields.io/badge/Swift-SwiftUI%20%2B%20AppKit-F05138?logo=swift&logoColor=white)
 ![Status](https://img.shields.io/badge/status-early%20preview-8E8E93)
 
-<img src="docs/screenshots/hero.png" alt="Docky with a left dock, a right dock with shelves, an open shelf and the macOS Dock at the bottom" width="100%">
+<img src="docs/screenshots/hero.png" alt="Docky with left, top and right docks, an open shelf and the macOS Dock at the bottom" width="100%">
 
 </div>
 
@@ -23,11 +23,11 @@ and drop files on a shelf instead of piling them on the desktop.
 
 | | |
 |---|---|
-| 🧭 **Left & right docks** | Turn on a dock on either side of the screen, both, or none. Each has its own apps, folders and files. |
+| 🧭 **Left, top & right docks** | Turn on any combination of docks around the screen. Each has its own apps, folders and files. The top dock sits just below the menu bar. |
 | 👻 **Always visible or on demand** | Keep a dock on screen, or let it appear only when the pointer touches that edge of the screen. |
 | 🧲 **Drag & drop** | Reorder icons, move them between docks, or drop apps and folders straight from Finder. |
 | 🟢 **Running indicators** | A dot shows which apps are open. Right-click to open, quit, show in Finder or remove. |
-| 🗂️ **Shelves** | Named drop zones at the bottom of a side dock. Dropped files are *moved* into a real folder, so the desktop stays clean. |
+| 🗂️ **Shelves** | Named drop zones at the end of any Docky dock. Dropped files are *moved* into a real folder, so the desktop stays clean. |
 | 🖼️ **Previews & Quick Look** | Shelves show thumbnails of images and videos. Press <kbd>Space</kbd> to preview and drag files back out to any app. |
 | ⬇️ **Bottom Dock editor** | Rearrange the macOS Dock itself. A backup is taken before every change, with one-click undo. |
 | 🚀 **Launch at login** | Docky can start quietly when you log in and live in the menu bar. |
@@ -36,11 +36,11 @@ and drop files on a shelf instead of piling them on the desktop.
 
 <table>
 <tr>
-<td width="62%"><img src="docs/screenshots/settings.png" alt="Docky customization window with left, bottom and right dock columns"></td>
+<td width="62%"><img src="docs/screenshots/settings.png" alt="Docky customization window with a sidebar of docks and the right dock's settings"></td>
 <td width="38%"><img src="docs/screenshots/shelf.png" alt="An open shelf showing image thumbnails and documents"></td>
 </tr>
 <tr>
-<td align="center"><sub><b>Customize</b>: one column per dock, mirroring your screen</sub></td>
+<td align="center"><sub><b>Customize</b>: pick a dock in the sidebar and set it up</sub></td>
 <td align="center"><sub><b>Shelf</b>: thumbnails, Quick Look and drag-out</sub></td>
 </tr>
 </table>
@@ -66,12 +66,12 @@ menu bar, and opening the app again brings the window back.
 
 ## Using Docky
 
-1. **Turn on a side dock.** In the window or from the menu bar, enable the *Left* or *Right* dock.
+1. **Turn on a dock.** Pick *Left*, *Top* or *Right* in the sidebar (or the menu bar) and switch it on.
 2. **Choose how it appears.** *Always visible*, or *Show at screen edge* to reveal it when the pointer touches that edge.
 3. **Add items.** Click **Add…**, or drag apps, folders and files from Finder onto a dock.
 4. **Rearrange.** Drag icons within a dock or from one dock to the other. Right-click for more options.
 5. **Create a shelf.** Under *Shelves*, type a name (a folder is created in `~/Shelf`) or pick an existing folder.
-6. **Edit the bottom Dock (optional).** Reorder or add items in the middle column, then press **Apply to Dock**.
+6. **Edit the bottom Dock (optional).** Select *Bottom Dock* under *macOS*, reorder or add items, then press **Apply to Dock**.
 
 ### How shelves keep you safe
 
@@ -127,7 +127,8 @@ scripts/                Build, test and icon scripts
 
 ## Known limitations
 
-- Side docks appear on the main display (the one with the menu bar).
-- On an edge shared with another display, *Show at screen edge* waits for the pointer to rest at the edge
-  for a moment, so moving between monitors doesn't flash the dock.
+- Docky's docks appear on the main display (the one with the menu bar).
+- On the top edge (shared with the menu bar) and on edges shared with another display, *Show at screen edge*
+  waits for the pointer to rest at the edge for a moment, so reaching for a menu or moving between monitors
+  doesn't flash the dock.
 - An open shelf refreshes after Docky moves files; changes made in Finder show the next time it opens.

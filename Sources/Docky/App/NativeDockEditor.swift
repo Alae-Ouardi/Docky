@@ -28,12 +28,14 @@ final class NativeDockEditor {
         draft = draft.adding(urls.map(DockItem.init(url:)))
     }
 
-    func remove(_ item: DockItem) {
-        draft = draft.removing(itemID: item.id)
+
+    /// Drops files into a section; already-pinned paths are moved instead of duplicated.
+    func place(_ urls: [URL], in section: NativeDockLayout.Section, at index: Int?) {
+        draft = draft.placing(urls.map(DockItem.init(url:)), in: section, at: index)
     }
 
-    func move(_ section: WritableKeyPath<NativeDockLayout, [DockItem]>, from source: IndexSet, to destination: Int) {
-        draft[keyPath: section].move(fromOffsets: source, toOffset: destination)
+    func remove(paths: Set<String>) {
+        draft = draft.removing(paths: paths)
     }
 
     func restore(_ backup: URL) throws {

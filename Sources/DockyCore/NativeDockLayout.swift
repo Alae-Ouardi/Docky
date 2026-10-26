@@ -26,8 +26,47 @@ public struct NativeDockLayout: Hashable, Sendable {
         return copy
     }
 
-    public func removing(itemID: UUID) -> NativeDockLayout {
-        NativeDockLayout(apps: apps.filter { $0.id != itemID }, others: others.filter { $0.id != itemID })
+    public enum Section: Hashable, Sendable {
+        case apps
+        case others
+
+        /// The Dock keeps apps left of its divider and folders/files right of it.
+        public static func of(_ item: DockItem) -> Section { item.kind == .app ? .apps : .others }
+    }
+
+    /// Places dropped items, moving anything already pinned instead of duplicating it. Items that
+    /// belong in `section` go to `index` (counted before removals, like SwiftUI drops); the rest
+    /// are appended to the section the Dock requires for them.
+    public func placing(_ items: [DockItem], in section: Section, at index: Int?) -> NativeDockLayout {
+        let existing = Dictionary((apps + others).map { ($0.path, $0) }, uniquingKeysWith: { first, _ in first })
+        let resolved = items.map { existing[$0.path] ?? $0 }
+        var copy = self
+        // A pinned item keeps its kind, so it always stays within its own section.
+        for target in [Section.apps, .others] {
+            let incoming = resolved.filter { Section.of($0) == target }
+            guard !incoming.isEmpty else { continue }
+            copy[target] = copy[target].placing(incoming, at: target == section ? index : nil)
+        }
+        return copy
+    }
+
+    public subscript(section: Section) -> [DockItem] {
+        get {
+            switch section {
+            case .apps: apps
+            case .others: others
+            }
+        }
+        set {
+            switch section {
+            case .apps: apps = newValue
+            case .others: others = newValue
+            }
+        }
+    }
+
+    public func removing(paths: Set<String>) -> NativeDockLayout {
+        NativeDockLayout(apps: apps.filter { !paths.contains($0.path) }, others: others.filter { !paths.contains($0.path) })
     }
 
     public var isEmpty: Bool { apps.isEmpty && others.isEmpty }

@@ -17,6 +17,8 @@ final class DockWindowController {
     private var lastInsideAt = Date()
     private var hoverTimer: Timer?
     private var edgeTrigger: EdgeTrigger
+    /// Whether another display continues past this dock's edge; refreshed in `layout()`.
+    private var hasNeighbourScreen = false
 
     init(edge: DockEdge, state: AppState) {
         self.edge = edge
@@ -37,8 +39,12 @@ final class DockWindowController {
         panel.orderFrontRegardless()
     }
 
+    /// Called on every config change and whenever displays are added, moved or resized.
     func layout() {
         panel.setFrame(shownFrame, display: true)
+        if let frame = screen?.frame {
+            hasNeighbourScreen = edgeTrigger.hasNeighbour(of: frame, among: NSScreen.screens.map(\.frame))
+        }
     }
 
     func close() {
@@ -69,21 +75,6 @@ final class DockWindowController {
         }
     }
 
-    /// The dock plus the strip between it and its screen edge (the menu bar for the top dock),
-    /// so a pointer resting at the edge keeps the dock open instead of toggling it.
-    private func keepOpenRegion(shown: NSRect, screen: NSRect) -> NSRect {
-        let region = shown.insetBy(dx: -Self.hideSlack, dy: -Self.hideSlack)
-        switch edge {
-        case .left: return region.union(NSRect(x: screen.minX, y: shown.minY, width: 1, height: shown.height))
-        case .right: return region.union(NSRect(x: screen.maxX - 1, y: shown.minY, width: 1, height: shown.height))
-        case .top: return region.union(NSRect(x: shown.minX, y: screen.maxY - 1, width: shown.width, height: 1))
-        }
-    }
-
-    private func span(of shown: NSRect) -> ClosedRange<CGFloat> {
-        edge.isHorizontal ? shown.minX...shown.maxX : shown.minY...shown.maxY
-    }
-
     // MARK: - Auto-hide
 
     private func configureAutoHide() {
@@ -105,21 +96,20 @@ final class DockWindowController {
         guard let screenFrame = screen?.frame else { return }
         let mouse = NSEvent.mouseLocation
         let shown = shownFrame
+        let now = Date()
 
         if isRevealed {
             let keepOpen = state.openShelfID != nil
-                || keepOpenRegion(shown: shown, screen: screenFrame).contains(mouse)
+                || edgeTrigger.keepsOpen(pointer: mouse, dock: shown, screen: screenFrame, slack: Self.hideSlack)
             if keepOpen {
-                lastInsideAt = Date()
-            } else if Date().timeIntervalSince(lastInsideAt) > Self.hideDelay {
+                lastInsideAt = now
+            } else if now.timeIntervalSince(lastInsideAt) > Self.hideDelay {
                 setRevealed(false, animated: true)
             }
-        } else {
-            let hasNeighbour = edgeTrigger.hasNeighbour(of: screenFrame, among: NSScreen.screens.map(\.frame))
-            if edgeTrigger.shouldReveal(pointer: mouse, screen: screenFrame, dockSpan: span(of: shown),
-                                        hasNeighbourScreen: hasNeighbour) {
-                setRevealed(true, animated: true)
-            }
+        } else if edgeTrigger.shouldReveal(pointer: mouse, screen: screenFrame,
+                                           dockSpan: edgeTrigger.revealSpan(dock: shown, screen: screenFrame),
+                                           hasNeighbourScreen: hasNeighbourScreen, now: now) {
+            setRevealed(true, animated: true)
         }
     }
 

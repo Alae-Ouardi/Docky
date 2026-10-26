@@ -65,10 +65,21 @@ struct DockConfigTests {
         #expect(config.moving(itemID: UUID(), to: .right, at: 0) == config)
     }
 
-    @Test func droppingKnownPathMovesAcrossEdges() {
+    @Test func droppingOnlyTouchesDestinationDock() {
+        // Moving between docks removes from the source explicitly; a drop never steals.
         let updated = config.dropping([URL(fileURLWithPath: c.path)], on: .left, at: 0)
-        #expect(updated.left.items == [c, a, b])
-        #expect(updated.right.items.isEmpty)
+        #expect(updated.left.items.map(\.path) == [c.path, a.path, b.path])
+        #expect(updated.right.items == [c])
+    }
+
+    @Test func droppingReordersWithinDockKeepingIdentity() {
+        let updated = config.dropping([URL(fileURLWithPath: a.path)], on: .left, at: 2)
+        #expect(updated.left.items == [b, a])
+    }
+
+    @Test func placingIgnoresDuplicatePathsInOneDrop() {
+        let x = DockItem(kind: .file, path: "/tmp/x.txt")
+        #expect([a].placing([x, x], at: nil).map(\.path) == [a.path, x.path])
     }
 
     @Test func droppingNewPathsInsertsInOrder() {
@@ -87,7 +98,7 @@ struct DockConfigTests {
         let layout = NativeDockLayout(apps: [a]).adding([a, b, c])
         #expect(layout.apps == [a, b])
         #expect(layout.others == [c])
-        #expect(layout.removing(itemID: b.id).apps == [a])
+        #expect(layout.removing(paths: [b.path]).apps == [a])
     }
 
     @Test func iconSizeIsClamped() {

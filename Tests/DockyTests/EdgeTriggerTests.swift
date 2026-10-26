@@ -80,6 +80,45 @@ struct EdgeTriggerTests {
         #expect(!revealed)
     }
 
+    @Test func pointerPushedAgainstTopKeepsDockOpen() {
+        // Regression: the very top row (y == screen.maxY) used to fall outside, so the dock hid
+        // while the pointer was still resting at the edge.
+        let screen = CGRect(x: 0, y: 0, width: 1728, height: 1117)
+        let dock = CGRect(x: 809, y: 1009, width: 110, height: 74)
+        let trigger = EdgeTrigger(edge: .top)
+        let open = { (x: CGFloat, y: CGFloat) in trigger.keepsOpen(pointer: CGPoint(x: x, y: y), dock: dock, screen: screen, slack: 8) }
+        #expect(open(864, 1117))   // resting on the edge above the dock
+        #expect(open(864, 1100))   // in the menu bar between dock and edge
+        #expect(open(600, 1117))   // resting on the edge in the widened reveal span
+        #expect(!open(600, 1100))  // using the menu bar away from the dock lets it hide
+        #expect(!open(300, 1117))  // outside the reveal span
+        #expect(!open(864, 900))   // below the dock
+    }
+
+    @Test func pointerAtSideEdgesKeepsDockOpen() {
+        let right = CGRect(x: 1430, y: 300, width: 82, height: 400)
+        #expect(EdgeTrigger(edge: .right).keepsOpen(pointer: CGPoint(x: 1511.9, y: 500), dock: right, screen: primary, slack: 8))
+        let left = CGRect(x: 0, y: 300, width: 82, height: 400)
+        #expect(EdgeTrigger(edge: .left).keepsOpen(pointer: CGPoint(x: 0, y: 500), dock: left, screen: primary, slack: 8))
+        #expect(!EdgeTrigger(edge: .left).keepsOpen(pointer: CGPoint(x: 400, y: 500), dock: left, screen: primary, slack: 8))
+    }
+
+    @Test func smallDockGetsWiderRevealSpan() {
+        let screen = CGRect(x: 0, y: 0, width: 1728, height: 1117)
+        let span = EdgeTrigger(edge: .top).revealSpan(dock: CGRect(x: 809, y: 1009, width: 110, height: 74), screen: screen)
+        #expect(span.upperBound - span.lowerBound == 576)
+        #expect(span.contains(864))
+        #expect(span.contains(600))
+    }
+
+    @Test func revealSpanStaysOnScreenAndKeepsLargeDocks() {
+        let screen = CGRect(x: 0, y: 0, width: 1728, height: 1117)
+        let nearEdge = EdgeTrigger(edge: .top).revealSpan(dock: CGRect(x: 0, y: 1009, width: 60, height: 74), screen: screen)
+        #expect(nearEdge.lowerBound == 0)
+        let tall = EdgeTrigger(edge: .left).revealSpan(dock: CGRect(x: 0, y: 100, width: 82, height: 900), screen: screen)
+        #expect(tall == 100...1000)
+    }
+
     @Test func detectsScreenAboveForTopEdge() {
         let above = CGRect(x: 0, y: 982, width: 1512, height: 982)
         #expect(EdgeTrigger(edge: .top).hasNeighbour(of: primary, among: [primary, above]))

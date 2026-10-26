@@ -29,7 +29,7 @@ struct DockView: View {
                             insertionMarker(visible: dropTargetIndex == index)
                         }
                         .dropDestination(for: DockDragPayload.self) { payloads, _ in
-                            state.drop(payloads.map(\.url), on: edge, at: index)
+                            state.move(payloads, to: .custom(edge), at: index)
                             return true
                         } isTargeted: { targeted in
                             if targeted {
@@ -52,7 +52,7 @@ struct DockView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .contentShape(Rectangle())
         .dropDestination(for: DockDragPayload.self) { payloads, _ in
-            state.drop(payloads.map(\.url), on: edge, at: nil)
+            state.move(payloads, to: .custom(edge), at: nil)
             return true
         }
     }

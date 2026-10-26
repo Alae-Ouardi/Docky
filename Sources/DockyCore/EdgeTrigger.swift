@@ -53,6 +53,40 @@ public struct EdgeTrigger: Sendable {
         }
     }
 
+    /// Where along the edge the pointer can reveal the dock: the dock's own extent, widened to at
+    /// least `minimumRevealFraction` of the edge so a small dock is still easy to hit.
+    public static let minimumRevealFraction: CGFloat = 1.0 / 3.0
+
+    public func revealSpan(dock: CGRect, screen: CGRect) -> ClosedRange<CGFloat> {
+        let (low, high, edgeLow, edgeHigh) = edge.isHorizontal
+            ? (dock.minX, dock.maxX, screen.minX, screen.maxX)
+            : (dock.minY, dock.maxY, screen.minY, screen.maxY)
+        let minimum = (edgeHigh - edgeLow) * Self.minimumRevealFraction
+        guard high - low < minimum else { return low...high }
+        let centre = (low + high) / 2
+        let start = min(max(centre - minimum / 2, edgeLow), edgeHigh - minimum)
+        return start...(start + minimum)
+    }
+
+    /// While revealed, the dock stays open when the pointer is over it (plus `slack`), between it
+    /// and its screen edge (the menu bar, for the top dock), or resting on the edge row anywhere
+    /// in the reveal span — where a pointer pushed against the edge stops.
+    public func keepsOpen(pointer: CGPoint, dock: CGRect, screen: CGRect, slack: CGFloat) -> Bool {
+        let towardEdge = dock.union(edgeStrip(along: dock.minX...dock.maxX, dock.minY...dock.maxY, screen: screen))
+        return towardEdge.insetBy(dx: -slack, dy: -slack).contains(pointer)
+            || isInZone(pointer, screen: screen, dockSpan: revealSpan(dock: dock, screen: screen))
+    }
+
+    /// A thin strip on the screen edge covering `xs` (top edge) or `ys` (side edges).
+    private func edgeStrip(along xs: ClosedRange<CGFloat>, _ ys: ClosedRange<CGFloat>, screen: CGRect) -> CGRect {
+        let width = Self.edgeWidth
+        switch edge {
+        case .left: return CGRect(x: screen.minX, y: ys.lowerBound, width: width, height: ys.upperBound - ys.lowerBound)
+        case .right: return CGRect(x: screen.maxX - width, y: ys.lowerBound, width: width, height: ys.upperBound - ys.lowerBound)
+        case .top: return CGRect(x: xs.lowerBound, y: screen.maxY - width, width: xs.upperBound - xs.lowerBound, height: width)
+        }
+    }
+
     /// Whether any other screen touches `screen` on the dock's edge.
     public func hasNeighbour(of screen: CGRect, among screens: [CGRect]) -> Bool {
         screens.contains { other in

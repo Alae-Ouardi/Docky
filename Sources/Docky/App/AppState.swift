@@ -16,14 +16,19 @@ final class AppState {
     var lastError: String?
 
     let running = RunningAppsMonitor()
+    /// Unapplied edits to the macOS bottom Dock.
+    let nativeDock: NativeDockEditor
 
     @ObservationIgnored var onConfigChange: ((DockConfig) -> Void)?
+    /// Items moved from a Docky dock into the bottom-Dock draft that has not been applied yet.
+    @ObservationIgnored private var stagedForBottom: [(edge: DockEdge, item: DockItem)] = []
     @ObservationIgnored private let store: ConfigStore
     @ObservationIgnored private let shelfFiles = ShelfFileManager()
     @ObservationIgnored private let logger = Logger(subsystem: "Docky", category: "AppState")
 
-    init(store: ConfigStore = ConfigStore()) {
+    init(store: ConfigStore = ConfigStore(), nativeDock: NativeDockEditor? = nil) {
         self.store = store
+        self.nativeDock = nativeDock ?? NativeDockEditor()
         do {
             config = try store.load()
         } catch {
@@ -58,6 +63,76 @@ final class AppState {
 
     func drop(_ urls: [URL], on edge: DockEdge, at index: Int?) {
         update { $0.dropping(urls, on: edge, at: index) }
+    }
+
+    // MARK: - Moving items between docks
+
+    enum DropTarget: Equatable {
+        case custom(DockEdge)
+        case bottom(NativeDockLayout.Section)
+    }
+
+    /// The one place items move between docks: drops from the live docks, the customization
+    /// columns and Finder, and every "Move to …" menu. Items leave their source dock (unless it
+    /// is the destination, which just reorders) and land at `index` in the target.
+    func move(_ payloads: [DockDragPayload], to target: DropTarget, at index: Int?) {
+        var next = config
+        for payload in payloads {
+            guard case .custom(let source) = payload.source, target != .custom(source) else { continue }
+            if case .bottom = target, let item = next[source].items.first(where: { $0.path == payload.path }) {
+                stagedForBottom.append((source, item))
+            }
+            next = next.removing(paths: [payload.path], from: source)
+        }
+        let urls = payloads.map(\.url)
+        switch target {
+        case .custom(let edge):
+            next = next.dropping(urls, on: edge, at: index)
+            let fromBottom = Set(payloads.filter { $0.source == .bottom }.map(\.path))
+            if !fromBottom.isEmpty { nativeDock.remove(paths: fromBottom) }
+        case .bottom(let section):
+            nativeDock.place(urls, in: section, at: index)
+        }
+        update { _ in next }
+    }
+
+    // MARK: - Bottom (macOS) Dock draft
+
+    /// Loads the macOS Dock into the draft unless there are unapplied edits to keep.
+    func loadBottomDockIfClean() {
+        if !nativeDock.isDirty { nativeDock.reload() }
+    }
+
+    func applyBottomDock() {
+        do {
+            try nativeDock.apply()
+            stagedForBottom = []
+        } catch {
+            report(error.localizedDescription, error)
+        }
+    }
+
+    /// Discards the draft and puts items moved into it back on their Docky docks.
+    func revertBottomDock() {
+        restoreStagedMoves()
+        nativeDock.reload()
+    }
+
+    func undoBottomDock(_ backup: URL) {
+        do {
+            try nativeDock.restore(backup)
+        } catch {
+            report(error.localizedDescription, error)
+        }
+    }
+
+    /// Items moved from a Docky dock into a draft that was never applied go back where they
+    /// came from, so a move can never lose them (called on revert and when Docky quits).
+    func restoreStagedMoves() {
+        guard !stagedForBottom.isEmpty else { return }
+        let staged = stagedForBottom
+        stagedForBottom = []
+        update { config in staged.reduce(config) { $0.adding([$1.item], to: $1.edge) } }
     }
 
     func moveFiles(_ urls: [URL], to shelf: Shelf) {

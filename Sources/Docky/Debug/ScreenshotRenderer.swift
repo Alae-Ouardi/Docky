@@ -25,17 +25,16 @@ enum ScreenshotRenderer {
             fatalError("Could not prepare screenshot workspace: \(error)")
         }
 
-        let state = AppState(store: ConfigStore(fileURL: workspace.appendingPathComponent("config.json")))
+        let state = AppState(
+            store: ConfigStore(fileURL: workspace.appendingPathComponent("config.json")),
+            nativeDock: NativeDockEditor(source: { SampleData.nativeDock })
+        )
         state.update { _ in SampleData.config(shelves: shelves) }
-        let nativeDock = NativeDockEditor(source: { SampleData.nativeDock })
-        nativeDock.reload()
 
         let shots: [(String, CGSize, AnyView)] = [
             ("hero", CGSize(width: 1440, height: 900), AnyView(HeroScene(shelf: shelf).environment(state))),
-            ("settings", CGSize(width: 1060, height: 800),
-             AnyView(WindowFrame(title: "Docky") {
-                 SettingsView(nativeDock: nativeDock, selection: .custom(.right))
-             }.environment(state))),
+            ("settings", CGSize(width: 1480, height: 860),
+             AnyView(WindowFrame(title: "Docky") { SettingsView() }.environment(state))),
             ("shelf", CGSize(width: 520, height: 470),
              AnyView(Backdrop { ShelfCard(shelf: shelf) }.environment(state))),
         ]
@@ -307,7 +306,7 @@ private struct WindowFrame<Content: View>: View {
                 Divider()
                 content
             }
-            .frame(width: 940, height: 700)
+            .frame(width: 1380, height: 760)
             .background(Color(nsColor: .windowBackgroundColor))
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .shadow(color: .black.opacity(0.35), radius: 30, y: 14)

@@ -31,7 +31,7 @@ struct DockItemView: View {
         }
         .onTapGesture { ItemActions.open(item) }
         .help(item.displayName)
-        .draggable(DockDragPayload(path: item.path)) { icon }
+        .draggable(DockDragPayload(item, from: .custom(edge))) { icon }
         .contextMenu {
             Button("Open") { ItemActions.open(item) }
             if isRunning {
@@ -81,7 +81,7 @@ struct ItemMenu: View {
         Divider()
         ForEach(DockEdge.allCases.filter { $0 != edge }, id: \.self) { target in
             Button("Move to \(target.title) Dock") {
-                state.update { $0.moving(itemID: item.id, to: target, at: $0[target].items.count) }
+                state.move([DockDragPayload(item, from: .custom(edge))], to: .custom(target), at: nil)
             }
         }
         Button("Remove from Dock") {

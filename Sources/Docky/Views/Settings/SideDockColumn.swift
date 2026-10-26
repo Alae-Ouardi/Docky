@@ -4,7 +4,6 @@ import SwiftUI
 /// Settings for one Docky dock: on/off, visibility, icon size, items and shelves.
 struct SideDockColumn: View {
     let edge: DockEdge
-    let nativeDock: NativeDockEditor
 
     @Environment(AppState.self) private var state
     @State private var newShelfName = ""
@@ -18,8 +17,8 @@ struct SideDockColumn: View {
                     .toggleStyle(.switch)
 
                 Picker("Visibility", selection: binding(\.visibility)) {
-                    Text("Always visible").tag(DockVisibility.alwaysVisible)
-                    Text("Show at screen edge").tag(DockVisibility.autoHide)
+                    Text("Always").tag(DockVisibility.alwaysVisible)
+                    Text("At screen edge").tag(DockVisibility.autoHide)
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
@@ -37,6 +36,7 @@ struct SideDockColumn: View {
             Label("\(edge.title) Dock", systemImage: edge.symbolName)
                 .font(.headline)
         }
+        .frame(minWidth: SettingsView.columnWidth)
     }
 
     private var itemsList: some View {
@@ -50,21 +50,18 @@ struct SideDockColumn: View {
                 }
             }
             List {
+                if side.items.isEmpty {
+                    DropHint { state.move($0, to: .custom(edge), at: nil) }
+                }
                 ForEach(side.items) { item in
-                    ItemRow(item: item)
+                    DraggableItemRow(item: item, source: .custom(edge))
                         .contextMenu { rowMenu(for: item) }
                 }
-                .onMove { source, destination in
-                    guard let index = source.first else { return }
-                    let id = side.items[index].id
-                    state.update { $0.moving(itemID: id, to: edge, at: destination) }
+                .dropDestination(for: DockDragPayload.self) { payloads, index in
+                    state.move(payloads, to: .custom(edge), at: index)
                 }
             }
             .frame(minHeight: 200)
-            .dropDestination(for: DockDragPayload.self) { payloads, _ in
-                state.drop(payloads.map(\.url), on: edge, at: nil)
-                return true
-            }
         }
     }
 
@@ -94,10 +91,10 @@ struct SideDockColumn: View {
                     .onSubmit(addNamedShelf)
                 Button("Add", action: addNamedShelf)
                     .disabled(newShelfName.trimmingCharacters(in: .whitespaces).isEmpty)
-                Button("Use Folder…") {
-                    guard let folder = ItemPicker.chooseFolder() else { return }
-                    state.addShelf(Shelf(name: folder.lastPathComponent, folderPath: folder.path), to: edge)
-                }
+            }
+            Button("Use Existing Folder…") {
+                guard let folder = ItemPicker.chooseFolder() else { return }
+                state.addShelf(Shelf(name: folder.lastPathComponent, folderPath: folder.path), to: edge)
             }
             Text("New shelves are folders in ~/Shelf. Files dropped on a shelf are moved there.")
                 .font(.caption)
@@ -107,9 +104,9 @@ struct SideDockColumn: View {
 
     @ViewBuilder
     private func rowMenu(for item: DockItem) -> some View {
-        // Copies rather than moves: the bottom Dock only changes after "Apply", so removing
-        // the item here first could lose it if the draft is never applied.
-        Button("Add to Bottom Dock") { nativeDock.add([item.url]) }
+        Button("Move to Bottom Dock") {
+            state.move([DockDragPayload(item, from: .custom(edge))], to: .bottom(.of(item)), at: nil)
+        }
         ItemMenu(item: item, edge: edge)
     }
 

@@ -3,10 +3,10 @@ import SwiftUI
 
 /// Edits the pinned items of the native macOS Dock. Nothing changes until "Apply".
 struct NativeDockColumn: View {
-    @Bindable var editor: NativeDockEditor
-
     @Environment(AppState.self) private var state
     @State private var isConfirming = false
+
+    private var editor: NativeDockEditor { state.nativeDock }
 
     var body: some View {
         GroupBox {
@@ -15,29 +15,21 @@ struct NativeDockColumn: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
+                if editor.isDirty {
+                    Label("Unapplied changes. Press Apply to Dock to update the macOS Dock.", systemImage: "exclamationmark.circle")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                }
+
                 List {
-                    Section("Apps") {
-                        ForEach(editor.draft.apps) { item in
-                            ItemRow(item: item).contextMenu { rowMenu(for: item) }
-                        }
-                        .onMove { editor.move(\.apps, from: $0, to: $1) }
-                    }
-                    Section("Folders & Files") {
-                        ForEach(editor.draft.others) { item in
-                            ItemRow(item: item).contextMenu { rowMenu(for: item) }
-                        }
-                        .onMove { editor.move(\.others, from: $0, to: $1) }
-                    }
+                    section("Apps", .apps)
+                    section("Folders & Files", .others)
                 }
                 .frame(minHeight: 360)
-                .dropDestination(for: DockDragPayload.self) { payloads, _ in
-                    editor.add(payloads.map(\.url))
-                    return true
-                }
 
                 HStack {
                     Button("Add…") { editor.add(ItemPicker.choose()) }
-                    Button("Revert") { editor.reload() }
+                    Button("Revert") { state.revertBottomDock() }
                         .disabled(!editor.isDirty)
                     Spacer()
                     Button("Apply to Dock") { isConfirming = true }
@@ -48,7 +40,7 @@ struct NativeDockColumn: View {
                 if let backup = editor.lastBackup {
                     HStack {
                         Text("Previous Dock was backed up.").font(.caption).foregroundStyle(.secondary)
-                        Button("Undo") { restore(backup) }
+                        Button("Undo") { state.undoBottomDock(backup) }
                             .buttonStyle(.link)
                             .font(.caption)
                     }
@@ -59,10 +51,27 @@ struct NativeDockColumn: View {
                 .font(.headline)
         }
         .confirmationDialog("Apply changes to the macOS Dock?", isPresented: $isConfirming) {
-            Button("Apply and Restart Dock") { apply() }
+            Button("Apply and Restart Dock") { state.applyBottomDock() }
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("The Dock restarts briefly. A backup of your current Dock is saved first.")
+        }
+        .frame(minWidth: SettingsView.columnWidth)
+    }
+
+    private func section(_ title: String, _ section: NativeDockLayout.Section) -> some View {
+        let items = editor.draft[section]
+        return Section(title) {
+            if items.isEmpty {
+                DropHint { state.move($0, to: .bottom(section), at: nil) }
+            }
+            ForEach(items) { item in
+                DraggableItemRow(item: item, source: .bottom)
+                    .contextMenu { rowMenu(for: item) }
+            }
+            .dropDestination(for: DockDragPayload.self) { payloads, index in
+                state.move(payloads, to: .bottom(section), at: index)
+            }
         }
     }
 
@@ -70,28 +79,11 @@ struct NativeDockColumn: View {
     private func rowMenu(for item: DockItem) -> some View {
         ForEach(DockEdge.allCases, id: \.self) { edge in
             Button("Move to \(edge.title) Dock") {
-                state.drop([item.url], on: edge, at: nil)
-                editor.remove(item)
+                state.move([DockDragPayload(item, from: .bottom)], to: .custom(edge), at: nil)
             }
         }
         Button("Show in Finder") { ItemActions.revealInFinder(item.url) }
         Divider()
-        Button("Remove", role: .destructive) { editor.remove(item) }
-    }
-
-    private func restore(_ backup: URL) {
-        do {
-            try editor.restore(backup)
-        } catch {
-            state.report(error.localizedDescription, error)
-        }
-    }
-
-    private func apply() {
-        do {
-            try editor.apply()
-        } catch {
-            state.report(error.localizedDescription, error)
-        }
+        Button("Remove", role: .destructive) { editor.remove(paths: [item.path]) }
     }
 }

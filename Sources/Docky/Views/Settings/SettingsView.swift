@@ -1,92 +1,48 @@
 import DockyCore
 import SwiftUI
 
-/// Which dock the customization window is editing.
-enum DockSelection: Hashable {
-    case custom(DockEdge)
-    case bottom
-}
-
-/// Sidebar of docks (left, top, right and the macOS bottom Dock) with the selected one's settings.
+/// All four docks side by side, in screen order: left, top, bottom (macOS), right.
+/// Items can be dragged between the columns to move them from one dock to another.
 struct SettingsView: View {
-    @Environment(AppState.self) private var state
-    @State private var nativeDock: NativeDockEditor
-    @State private var selection: DockSelection
+    static let columnWidth: CGFloat = 300
+    static let columnSpacing: CGFloat = 14
+    static let padding: CGFloat = 16
+    static let minimumWidth = 4 * columnWidth + 3 * columnSpacing + 2 * padding
 
-    @MainActor
-    init(nativeDock: NativeDockEditor? = nil, selection: DockSelection = .custom(.left)) {
-        _nativeDock = State(initialValue: nativeDock ?? NativeDockEditor())
-        _selection = State(initialValue: selection)
-    }
+    @Environment(AppState.self) private var state
 
     var body: some View {
-        NavigationSplitView {
-            sidebar
-        } detail: {
-            VStack(spacing: 0) {
-                if let error = state.lastError {
-                    errorBanner(error)
-                }
-                detail
-                    .padding(20)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        VStack(spacing: 0) {
+            if let error = state.lastError {
+                errorBanner(error)
             }
+            HStack(alignment: .top, spacing: Self.columnSpacing) {
+                SideDockColumn(edge: .left)
+                SideDockColumn(edge: .top)
+                NativeDockColumn()
+                SideDockColumn(edge: .right)
+            }
+            .padding(Self.padding)
+            Divider()
+            footer
         }
-        .frame(minWidth: 820, minHeight: 600)
-        .task { nativeDock.reload() }
+        .frame(minWidth: Self.minimumWidth, minHeight: 640)
+        .task { state.loadBottomDockIfClean() }
     }
 
-    private var sidebar: some View {
-        List(selection: Binding(get: { selection }, set: { if let new = $0 { selection = new } })) {
-            Section("Docky") {
-                ForEach(DockEdge.allCases, id: \.self) { edge in
-                    sidebarRow(
-                        title: "\(edge.title) Dock",
-                        symbol: edge.symbolName,
-                        isOn: state.config[edge].isEnabled
-                    )
-                    .tag(DockSelection.custom(edge))
-                }
-            }
-            Section("macOS") {
-                sidebarRow(title: "Bottom Dock", symbol: "dock.rectangle", isOn: nil)
-                    .tag(DockSelection.bottom)
-            }
-        }
-        .navigationSplitViewColumnWidth(min: 190, ideal: 210)
-        .safeAreaInset(edge: .bottom) {
-            Toggle("Launch at login", isOn: Binding(
+    private var footer: some View {
+        HStack {
+            Toggle("Launch Docky at login", isOn: Binding(
                 get: { state.launchAtLogin },
                 set: { state.setLaunchAtLogin($0) }
             ))
-            .toggleStyle(.checkbox)
-            .padding(12)
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-    }
-
-    private func sidebarRow(title: String, symbol: String, isOn: Bool?) -> some View {
-        HStack {
-            Label(title, systemImage: symbol)
             Spacer()
-            if let isOn {
-                Circle()
-                    .fill(isOn ? Color.green : Color.secondary.opacity(0.35))
-                    .frame(width: 7, height: 7)
-                    .help(isOn ? "On" : "Off")
-            }
+            Text("Tip: drag items between the columns to move them from one dock to another.")
+                .foregroundStyle(.secondary)
+                .font(.callout)
         }
-    }
-
-    @ViewBuilder
-    private var detail: some View {
-        switch selection {
-        case .custom(let edge):
-            SideDockColumn(edge: edge, nativeDock: nativeDock)
-                .id(edge)
-        case .bottom:
-            NativeDockColumn(editor: nativeDock)
-        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
     }
 
     private func errorBanner(_ message: String) -> some View {
@@ -125,6 +81,32 @@ enum ItemPicker {
         panel.prompt = prompt
         configure(panel)
         return panel.runModal() == .OK ? panel.urls : []
+    }
+}
+
+/// Placeholder row so an empty list still accepts drops.
+struct DropHint: View {
+    let onDrop: ([DockDragPayload]) -> Void
+
+    var body: some View {
+        Label("Drop apps here", systemImage: "arrow.down.app")
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, minHeight: 36)
+            .dropDestination(for: DockDragPayload.self) { payloads, _ in
+                onDrop(payloads)
+                return true
+            }
+    }
+}
+
+/// A list row that can be dragged to another dock's column.
+struct DraggableItemRow: View {
+    let item: DockItem
+    let source: DockID
+
+    var body: some View {
+        ItemRow(item: item)
+            .draggable(DockDragPayload(item, from: source)) { ItemRow(item: item) }
     }
 }
 

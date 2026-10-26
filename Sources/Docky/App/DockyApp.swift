@@ -1,3 +1,4 @@
+import DockyCore
 import SwiftUI
 
 @main
@@ -14,7 +15,18 @@ struct DockyApp: App {
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
-    let state = AppState()
+    let state = AppState(store: AppDelegate.configStore)
+
+    /// Debug builds can point at a throwaway config (`DOCKY_CONFIG=/path/config.json`) so
+    /// end-to-end checks never touch the user's real layout.
+    private static var configStore: ConfigStore {
+        #if DEBUG
+        if let path = ProcessInfo.processInfo.environment["DOCKY_CONFIG"] {
+            return ConfigStore(fileURL: URL(fileURLWithPath: path))
+        }
+        #endif
+        return ConfigStore()
+    }
     private var dockManager: DockManager?
     private var settingsWindow: NSWindow?
 
@@ -51,6 +63,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         NSApp.activate()
     }
 
+    /// Items moved into an unapplied bottom-Dock draft go back to their docks.
+    func applicationWillTerminate(_ notification: Notification) {
+        state.restoreStagedMoves()
+    }
+
     func windowWillClose(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
     }
@@ -58,7 +75,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private func makeSettingsWindow() -> NSWindow {
         let window = NSWindow(contentViewController: NSHostingController(rootView: SettingsView().environment(state)))
         window.title = "Docky"
-        window.setContentSize(NSSize(width: 900, height: 660))
+        window.setContentSize(NSSize(width: 1340, height: 720))
         window.isReleasedWhenClosed = false
         window.delegate = self
         window.center()

@@ -36,11 +36,11 @@ and drop files on a shelf instead of piling them on the desktop.
 
 <table>
 <tr>
-<td width="62%"><img src="docs/screenshots/settings.png" alt="Docky customization window with a sidebar of docks and the right dock's settings"></td>
+<td width="62%"><img src="docs/screenshots/settings.png" alt="Docky customization window with the left, top, bottom and right docks side by side"></td>
 <td width="38%"><img src="docs/screenshots/shelf.png" alt="An open shelf showing image thumbnails and documents"></td>
 </tr>
 <tr>
-<td align="center"><sub><b>Customize</b>: pick a dock in the sidebar and set it up</sub></td>
+<td align="center"><sub><b>Customize</b>: all four docks side by side; drag apps between them</sub></td>
 <td align="center"><sub><b>Shelf</b>: thumbnails, Quick Look and drag-out</sub></td>
 </tr>
 </table>
@@ -66,12 +66,12 @@ menu bar, and opening the app again brings the window back.
 
 ## Using Docky
 
-1. **Turn on a dock.** Pick *Left*, *Top* or *Right* in the sidebar (or the menu bar) and switch it on.
+1. **Turn on a dock.** Switch on the *Left*, *Top* or *Right* column in the window (or use the menu bar).
 2. **Choose how it appears.** *Always visible*, or *Show at screen edge* to reveal it when the pointer touches that edge.
 3. **Add items.** Click **Add…**, or drag apps, folders and files from Finder onto a dock.
-4. **Rearrange.** Drag icons within a dock or from one dock to the other. Right-click for more options.
+4. **Rearrange.** Drag items between the columns of the window to move them from one dock to another (including the macOS bottom Dock), or within a column to reorder. You can also drag icons between the live docks. Right-click for more options.
 5. **Create a shelf.** Under *Shelves*, type a name (a folder is created in `~/Shelf`) or pick an existing folder.
-6. **Edit the bottom Dock (optional).** Select *Bottom Dock* under *macOS*, reorder or add items, then press **Apply to Dock**.
+6. **Edit the bottom Dock (optional).** Reorder, add or drag items into the *Bottom Dock* column, then press **Apply to Dock**.
 
 ### How shelves keep you safe
 

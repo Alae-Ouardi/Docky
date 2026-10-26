@@ -122,6 +122,12 @@ public extension DockConfig {
         return copy
     }
 
+    func removing(paths: Set<String>, from edge: DockEdge) -> DockConfig {
+        var copy = self
+        copy[edge].items.removeAll { paths.contains($0.path) }
+        return copy
+    }
+
     /// Moves an item to `edge` at `index`, which is interpreted in the destination list
     /// as it looks *before* the item is removed from its source.
     func moving(itemID: UUID, to edge: DockEdge, at index: Int) -> DockConfig {
@@ -141,29 +147,36 @@ public extension DockConfig {
         DockEdge.allCases.first { edge in self[edge].items.contains { $0.id == itemID } }
     }
 
-    /// Handles files dropped on a dock: paths already pinned are moved (preferring the copy on
-    /// the destination edge), unknown paths are added. A nil index appends.
+    /// Places dropped files on one dock: paths already on that dock are reordered, others are
+    /// added. Other docks are untouched; moving between docks removes from the source first.
+    /// A nil index appends.
     func dropping(_ urls: [URL], on edge: DockEdge, at index: Int?) -> DockConfig {
-        var result = self
-        var insertAt = index
-        for url in urls {
-            let path = url.standardizedFileURL.path
-            let target = insertAt ?? result[edge].items.count
-            if let existing = result.item(at: path, preferring: edge) {
-                result = result.moving(itemID: existing.id, to: edge, at: target)
-            } else {
-                result = result.adding([DockItem(url: url)], to: edge, at: target)
-            }
-            if insertAt != nil {
-                insertAt = (result[edge].items.firstIndex { $0.path == path } ?? target) + 1
-            }
-        }
-        return result
+        var copy = self
+        copy[edge].items = copy[edge].items.placing(urls.map(DockItem.init(url:)), at: index)
+        return copy
     }
+}
 
-    private func item(at path: String, preferring edge: DockEdge) -> DockItem? {
-        let order = [edge] + DockEdge.allCases.filter { $0 != edge }
-        return order.lazy.compactMap { e in self[e].items.first { $0.path == path } }.first
+/// Identifies any dock Docky manages: one of its own, or the macOS bottom Dock.
+public enum DockID: Codable, Hashable, Sendable {
+    case custom(DockEdge)
+    case bottom
+}
+
+extension Array where Element == DockItem {
+    /// Inserts `items` at `index` (counted before removals, like SwiftUI drop indices), moving
+    /// any that are already in the list instead of duplicating them. Existing entries keep
+    /// their identity. A nil index appends.
+    func placing(_ items: [DockItem], at index: Int?) -> [DockItem] {
+        let paths = Set(items.map(\.path))
+        let existing = Dictionary(filter { paths.contains($0.path) }.map { ($0.path, $0) }, uniquingKeysWith: { first, _ in first })
+        let removedBefore = index.map { position in prefix(position).filter { paths.contains($0.path) }.count } ?? 0
+        var result = filter { !paths.contains($0.path) }
+        var seen = Set<String>()
+        let placed = items.filter { seen.insert($0.path).inserted }.map { existing[$0.path] ?? $0 }
+        let position = index.map { ($0 - removedBefore).clamped(to: 0...result.count) } ?? result.count
+        result.insert(contentsOf: placed, at: position)
+        return result
     }
 }
 
